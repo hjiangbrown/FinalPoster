@@ -3,14 +3,30 @@ title: "Final Poster"
 output: PDF Doc
 EDA and Logistic Regression
 ---
-
-
 ```{r}
+# Install and load the ggcorrplot and ggplot2 packages
+install.packages(c("ggcorrplot", "ggplot2"))
+library(ggcorrplot)
+library(ggplot2)
+
+# Install and load the caret package
+install.packages("caret")
+library(caret)
+
 install.packages("readr")
 library(readr)
 # Install and load the mice package
 install.packages("mice")
 library(mice)
+
+library(dplyr)
+
+library(corrplot)
+```
+
+
+```{r}
+
 crime_data <- read_delim("communities.data", delim = ",")
 column_names <- c("state", "county", "community", "communityname", "fold", "population", "householdsize", "racepctblack", "racePctWhite", "racePctAsian", "racePctHisp", "agePct12t21", "agePct12t29", "agePct16t24", "agePct65up", "numbUrban", "pctUrban", "medIncome", "pctWWage", "pctWFarmSelf", "pctWInvInc", "pctWSocSec", "pctWPubAsst", "pctWRetire", "medFamInc", "perCapInc", "whitePerCap", "blackPerCap", "indianPerCap", "AsianPerCap", "OtherPerCap", "HispPerCap", "NumUnderPov", "PctPopUnderPov", "PctLess9thGrade", "PctNotHSGrad", "PctBSorMore", "PctUnemployed", "PctEmploy", "PctEmplManu", "PctEmplProfServ", "PctOccupManu", "PctOccupMgmtProf", "MalePctDivorce", "MalePctNevMarr", "FemalePctDiv", "TotalPctDiv", "PersPerFam", "PctFam2Par", "PctKids2Par", "PctYoungKids2Par", "PctTeen2Par", "PctWorkMomYoungKids", "PctWorkMom", "NumIlleg", "PctIlleg", "NumImmig", "PctImmigRecent", "PctImmigRec5", "PctImmigRec8", "PctImmigRec10", "PctRecentImmig", "PctRecImmig5", "PctRecImmig8", "PctRecImmig10", "PctSpeakEnglOnly", "PctNotSpeakEnglWell", "PctLargHouseFam", "PctLargHouseOccup", "PersPerOccupHous", "PersPerOwnOccHous", "PersPerRentOccHous", "PctPersOwnOccup", "PctPersDenseHous", "PctHousLess3BR", "MedNumBR", "HousVacant", "PctHousOccup", "PctHousOwnOcc", "PctVacantBoarded", "PctVacMore6Mos", "MedYrHousBuilt", "PctHousNoPhone", "PctWOFullPlumb", "OwnOccLowQuart", "OwnOccMedVal", "OwnOccHiQuart", "RentLowQ", "RentMedian", "RentHighQ", "MedRent", "MedRentPctHousInc", "MedOwnCostPctInc", "MedOwnCostPctIncNoMtg", "NumInShelters", "NumStreet", "PctForeignBorn", "PctBornSameState", "PctSameHouse85", "PctSameCity85", "PctSameState85", "LemasSwornFT", "LemasSwFTPerPop", "LemasSwFTFieldOps", "LemasSwFTFieldPerPop", "LemasTotalReq", "LemasTotReqPerPop", "PolicReqPerOffic", "PolicPerPop", "RacialMatchCommPol", "PctPolicWhite", "PctPolicBlack", "PctPolicHisp", "PctPolicAsian", "PctPolicMinor", "OfficAssgnDrugUnits", "NumKindsDrugsSeiz", "PolicAveOTWorked", "LandArea", "PopDens", "PctUsePubTrans", "PolicCars", "PolicOperBudg", "LemasPctPolicOnPatr", "LemasGangUnitDeploy", "LemasPctOfficDrugUn", "PolicBudgPerPop", "ViolentCrimesPerPop")
 
@@ -31,18 +47,61 @@ columns_to_drop <- names(na_percentage[na_percentage >= 0.5])
 crime_data_filtered <- crime_data[, !(names(crime_data) %in% columns_to_drop)]
 
 # Convert all columns to numeric (excluding 'communityname' column, which is a string)
-for (i in setdiff(1:ncol(crime_data), 4)) {
+for (i in setdiff(1:ncol(crime_data_filtered), 4)) {
   crime_data[[i]] <- as.numeric(crime_data[[i]])
 }
 
 # Perform random imputation
-mice_imputed_data <- mice(crime_data, method = "pmm", m = 1, maxit = 1)
+mice_imputed_data <- mice(crime_data_filtered, method = "pmm", m = 1, maxit = 1)
 
 # Extract the imputed data
 crime_imputed_data <- complete(mice_imputed_data)
 
 # Display the first few rows of the imputed data
 head(crime_imputed_data)
+
+# Subset the data frame to exclude the 'communityname' column
+crime_data_subset_imputed <- crime_imputed_data[, -which(names(crime_imputed_data) == "communityname")]
+
+colSums(is.na(crime_data_subset_imputed))
+
+# Select only numeric columns
+crime_data_subset_imputed <- select_if(crime_data_subset_imputed, is.numeric)
+
+# Compute the correlation matrix
+cor_matrix <- cor(crime_data_subset_imputed, use = "pairwise.complete.obs")
+
+# Find the indices of highly correlated predictors
+high_cor_indices <- findCorrelation(cor(crime_data_subset_imputed), cutoff = 0.9)
+
+# Print the names of the highly correlated columns
+print(names(crime_data_subset_imputed)[high_cor_indices])
+
+
+# Extract the highly correlated columns
+high_cor_cols <- crime_data_subset_imputed[, high_cor_indices]
+
+# Compute the correlation matrix
+cor_matrix <- cor(high_cor_cols, use = "pairwise.complete.obs")
+
+# Set plot size
+png("correlation_plot.png", width = 1200, height = 1200, res = 150)
+
+# Create a correlation plot matrix
+corrplot(cor_matrix, method = "color",
+         col = colorRampPalette(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF", "#E0F3F8", "#91BFDB", "#4575B4"))(100),
+         type = "lower",
+         tl.col = "black",
+         tl.srt = 45,
+         tl.cex = 0.6,
+         diag = FALSE,
+         addCoef.col = "black",
+         addCoefasPercent = TRUE,
+         number.cex = 0.6)
+
+# Save plot
+dev.off()
+
 
 ```
 
