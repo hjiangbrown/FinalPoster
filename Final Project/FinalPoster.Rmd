@@ -1,0 +1,19 @@
+---
+title: "Final Poster"
+output: PDF Doc
+EDA and Logistic Regression
+---
+
+
+```{r}
+install.packages("readr")
+library(readr)
+communities_data <- read_delim("communities.data", delim = ",")
+communities_data
+
+
+
+
+
+```
+
