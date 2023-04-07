@@ -18,7 +18,9 @@ crime_data <- setNames(crime_data, column_names)
 # Display the first few rows of the updated dataframe
 head(crime_data)
 
+crime_data[crime_data == "?"] <- NA
 
 
+colSums(is.na(crime_data))
 ```
 
