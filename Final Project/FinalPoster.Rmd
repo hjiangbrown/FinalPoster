@@ -118,9 +118,9 @@ features_to_drop <- unlist(features_to_drop)
 features_to_drop<-unique(features_to_drop)
 print(features_to_drop)
 
-crime_data_subset_imputed <- crime_data_subset_imputed[, !names(crime_data_subset_imputed) %in% features_to_drop]
+crime_data_subset_imputed_2 <- crime_data_subset_imputed[, !names(crime_data_subset_imputed) %in% features_to_drop]
 # Compute the correlation matrix for the remaining columns
-cor_matrix <- cor(crime_data_subset_imputed, use = "pairwise.complete.obs")
+cor_matrix <- cor(crime_data_subset_imputed2, use = "pairwise.complete.obs")
 
 # Find the indices of highly correlated predictors
 high_cor_indices <- findCorrelation(cor_matrix, cutoff = 0.7)
