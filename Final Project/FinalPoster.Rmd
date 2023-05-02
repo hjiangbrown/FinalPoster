@@ -69,10 +69,13 @@ crime_data_subset_imputed <- dplyr::select_if(crime_data_subset_imputed, is.nume
 cor_matrix <- cor(crime_data_subset_imputed, use = "pairwise.complete.obs")
 
 # Find the indices of highly correlated predictors
-high_cor_indices <- findCorrelation(cor_matrix, cutoff = 0.6)
+#global correction
+high_cor_indices <- findCorrelation(cor_matrix, cutoff = 0.7)
 
-# Group highly correlated features together in a list of lists
-cor_group <- list()
+# Initialize list to store indices of features to drop
+features_to_drop <- list()
+# Loop over each group of highly correlated features
+#pairwise correction
 for (i in high_cor_indices) {
   group <- NULL
   for (j in high_cor_indices) {
@@ -88,50 +91,30 @@ for (i in high_cor_indices) {
     }
   }
   if (!is.null(group)) {
-    cor_group <- append(cor_group, list(group))
+    features_to_drop <- append(features_to_drop, list(group))
   }
 }
 
-# Print the list of highly correlated features
-cat("Highly correlated features:\n")
-print(cor_group)
-
-# Initialize list to store indices of features to drop
-features_to_drop <- list()
-# Loop over each group of highly correlated features
-for (i in 1:length(cor_group)) {
-  group_vars <- cor_group[[i]]
-  # Determine which feature to drop based on correlation with target variable
-  cor_vals <- sapply(group_vars, function(x) cor(crime_data_subset_imputed[[x]], crime_data_subset_imputed$ViolentCrimesPerPop))
-  max_corr <- max(abs(cor_vals))
-  drop_index <- which(abs(cor_vals) < max_corr)
-  print(drop_index)
-  # Add the indices of the features to be dropped to the list
-  features_to_drop[[i]] <- group_vars[drop_index]
-}
-
-
 # Flatten the list of features to drop
-features_to_drop <- unlist(features_to_drop)
-
-#remove repeats
-features_to_drop<-unique(features_to_drop)
-print(features_to_drop)
+features_to_drop <- unique(unlist(features_to_drop))
 
 crime_data_subset_imputed_2 <- crime_data_subset_imputed[, !names(crime_data_subset_imputed) %in% features_to_drop]
 # Compute the correlation matrix for the remaining columns
-cor_matrix <- cor(crime_data_subset_imputed2, use = "pairwise.complete.obs")
+cor_matrix <- cor(crime_data_subset_imputed_2, use = "pairwise.complete.obs")
 
-# Find the indices of highly correlated predictors
+# Find the indices of highly correlated predictors for the new correlation matrix.
+#this line is repeated to check for global correlation again
+#global correction 
+# a variable is removed if it has .7 correlation with too many variables
 high_cor_indices <- findCorrelation(cor_matrix, cutoff = 0.7)
 
 # Subset the correlation matrix to only include highly correlated features
 cor_matrix_high_cor <- cor_matrix[high_cor_indices, high_cor_indices]
 
 # Set plot size
-png("correlation_plot.png", width = 1200, height = 1200,res = 150)
+png("correlation_plot.png", width = 1200, height = 1200, res = 150)
 
-# Create a correlation plot matrix for the highly correlated features
+# Create the correlation plot
 corrplot(cor_matrix_high_cor, method = "color",
          col = colorRampPalette(c("#D73027", "#FC8D59", "#FEE090", "#FFFFBF", "#E0F3F8", "#91BFDB", "#4575B4"))(100),
          type = "lower",
@@ -143,9 +126,11 @@ corrplot(cor_matrix_high_cor, method = "color",
          addCoefasPercent = TRUE,
          number.cex = 0.6)
 
+# Add a separate title above the plot
+title(main = "Correlation Plot with remaining High Correlation Features")
+
 # Save plot
 dev.off()
-
 
 ```
 ```{r}
@@ -158,49 +143,45 @@ library(ggpubr)
 
 #EDA focus starts
 # ViolentCrimesPerPop is target variable
-
-# Create the QQ plot
+#we do a qq plot to check skew and normal distribution assumption.
+# QQ plot
 qq_plot <- ggqqplot(crime_data_subset_imputed, "ViolentCrimesPerPop", 
                     ylab = "Sample Quantiles", 
                     xlab = "Theoretical Quantiles",
                     main = "QQ Plot of Violent Crimes Per Population")
 
-# Display the plot
-print(qq_plot)
+ggsave("qq_plot.png", plot = qq_plot)
 
 
-# box plot of violent crimes per pop
-
+# Box plot
 box_plot <- ggplot(crime_data_subset_imputed, aes(y = ViolentCrimesPerPop)) + 
             geom_boxplot() +
             ylab("Violent Crimes Per Population") +
             xlab("") +
             ggtitle("Box Plot of Violent Crimes Per Population")
 
-# Display the plot
-print(box_plot)
+ggsave("box_plot.png", plot = box_plot)
 
-#scatter plot of poverty and violent crimes
-# Create the scatter plot
-scatter_plot <- ggplot(crime_data_subset_imputed, aes(x = PctPopUnderPov, y = ViolentCrimesPerPop)) +
+
+# Scatter plot: Poverty vs. Violent Crimes
+scatter_plot_poverty <- ggplot(crime_data_subset_imputed, aes(x = PctPopUnderPov, y = ViolentCrimesPerPop)) +
                 geom_point() +
                 xlab("Percent Population Under Poverty") +
                 ylab("Violent Crimes Per Population") +
                 ggtitle("Scatter Plot of Violent Crimes Per Population vs. Percent Population Under Poverty")
 
-# Display the plot
-print(scatter_plot)
+ggsave("scatter_plot_poverty.png", plot = scatter_plot_poverty)
 
-#Education vs violent crimes 
-# Create the scatter plot
-scatter_plot <- ggplot(crime_data_subset_imputed, aes(x = PctNotHSGrad, y = ViolentCrimesPerPop)) +
+
+# Scatter plot: Education vs. Violent Crimes
+scatter_plot_education <- ggplot(crime_data_subset_imputed, aes(x = PctNotHSGrad, y = ViolentCrimesPerPop)) +
                 geom_point() +
                 xlab("Percent of People Not Graduated from High School") +
                 ylab("Violent Crimes Per Population") +
                 ggtitle("Scatter Plot of Violent Crimes Per Population vs. Percent of People Not Graduated from High School")
 
-# Display the plot
-print(scatter_plot)
+ggsave("scatter_plot_education.png", plot = scatter_plot_education)
+
 
 ```
 
